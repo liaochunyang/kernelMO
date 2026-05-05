@@ -9,4 +9,4 @@ Kernel Multiple Operator Learning
 
 3. Framework 2: out-of-distribution initial conditions.
 
-4. Framework 2: combine ood $\alpha$ and ood $u_0$.
+4. Framework 2: ood $\alpha$ and ood $u_0$.
