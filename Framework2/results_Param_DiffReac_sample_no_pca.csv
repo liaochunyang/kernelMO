@@ -1,0 +1,5 @@
+pde,task_mode,method,kernel,split,n_train,n_eval,ics_per_param,mean_relative_error,std_relative_error,pca,x_model_dim,coef_model_dim,y_model_dim,fw1_x_model_dim,fw1_y_model_dim,train_time_seconds,predict_time_seconds,length_scale,alpha,nu,coef_length_scale,coef_nu,state_length_scale,state_nu
+Param_DiffReac,sample,vanilla,RBF,test,10000,4000,,0.06763115678905328,0.02544023235127555,False,128,129,8192,,,19.948583375000453,3.1508234169959906,100.0,1e-10,,,,,
+Param_DiffReac,sample,vanilla,Matern,test,10000,4000,,0.09208971842491429,0.052659585367242016,False,128,129,8192,,,14.179582917000516,3.1681603339966387,100.0,1e-10,1.5,,,,
+Param_DiffReac,sample,product_gpr,Matern x Matern,test,10000,4000,,0.02492776439109313,0.010289161094535308,False,128,129,8192,,,18.223220291998587,4.6359728340030415,,1e-10,,1.0,2.5,1000.0,2.5
+Param_DiffReac,sample,product_gpr,RBF x RBF,test,10000,4000,,0.031636514043145325,0.012097332322668006,False,128,129,8192,,,17.640169457998127,4.3509268749985495,,1e-10,,1.0,,1000.0,

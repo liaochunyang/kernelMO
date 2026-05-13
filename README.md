@@ -49,6 +49,6 @@ Model | Conservation Law | Diffusion Reaction Advection | Nonlinear Klein Gordon
 
 4. Framework 2: ood $\alpha$ and ood $u_0$.
 
-5. Try Gaussian kernel and Matern kernel for all models, and tune the hyper-parameters.
+5. <s>Try Gaussian kernel and Matern kernel for all models, and tune the hyper-parameters.</s>
 
 We may need to rewirte the functions to generate ood datatsets.

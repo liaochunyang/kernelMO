@@ -1,0 +1,9 @@
+pde,task_mode,method,kernel,split,n_train,n_eval,ics_per_param,mean_relative_error,std_relative_error,pca,x_model_dim,coef_model_dim,y_model_dim,fw1_x_model_dim,fw1_y_model_dim,train_time_seconds,predict_time_seconds,length_scale,alpha,nu,coef_length_scale,coef_nu,state_length_scale,state_nu
+Conservation_law,sample,vanilla,RBF,test,10000,4000,,0.04757148350401502,0.03213592949693436,False,128,4,8192,,,14.63736829199479,3.195179875001486,100.0,1e-10,,,,,
+Conservation_law,sample,vanilla,RBF,ood,10000,4000,,0.07495980842872606,0.05171007711763878,False,128,4,8192,,,14.63736829199479,3.2245294579988695,100.0,1e-10,,,,,
+Conservation_law,sample,vanilla,Matern,test,10000,4000,,0.066662108428908,0.05449520736335855,False,128,4,8192,,,14.262927125004353,3.2850131660015904,1.0,1e-10,2.5,,,,
+Conservation_law,sample,vanilla,Matern,ood,10000,4000,,0.03979776564135228,0.032766392015617624,False,128,4,8192,,,14.262927125004353,3.4634011250018375,1.0,1e-10,2.5,,,,
+Conservation_law,sample,product_gpr,Matern x Matern,test,10000,4000,,0.017589380474048816,0.015205916281259857,False,128,4,8192,,,15.564980166993337,3.5002371669979766,,1e-10,,1.0,2.5,100.0,1.5
+Conservation_law,sample,product_gpr,Matern x Matern,ood,10000,4000,,0.06236738645598878,0.04242489579443957,False,128,4,8192,,,15.564980166993337,3.629141792000155,,1e-10,,1.0,2.5,100.0,1.5
+Conservation_law,sample,product_gpr,RBF x RBF,test,10000,4000,,0.029686828947922902,0.021463985305779438,False,128,4,8192,,,14.933419792003406,3.315525375001016,,1e-10,,1.0,,100.0,
+Conservation_law,sample,product_gpr,RBF x RBF,ood,10000,4000,,0.09362180402147532,0.06455632553101767,False,128,4,8192,,,14.933419792003406,3.3694735420067445,,1e-10,,1.0,,100.0,

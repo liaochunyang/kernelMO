@@ -1,0 +1,5 @@
+pde,task_mode,method,kernel,split,n_train,n_eval,ics_per_param,mean_relative_error,std_relative_error,pca,x_model_dim,coef_model_dim,y_model_dim,fw1_x_model_dim,fw1_y_model_dim,train_time_seconds,predict_time_seconds,length_scale,alpha,nu,coef_length_scale,coef_nu,state_length_scale,state_nu
+Param_Wave,sample,vanilla,RBF,test,10000,4000,,0.5928561526603934,0.21322389191393512,False,128,64,8192,,,24.90835041700484,4.118407624999236,10.0,1e-10,,,,,
+Param_Wave,sample,vanilla,Matern,test,10000,4000,,0.831625103960414,0.40256875870388686,False,128,64,8192,,,20.711151415998756,3.190473458998895,100.0,1e-10,1.5,,,,
+Param_Wave,sample,product_gpr,Matern x Matern,test,10000,4000,,0.03334823657209627,0.06752356893747871,False,128,64,8192,,,16.840465208006208,4.03447362499719,,1e-10,,1.0,2.5,1000.0,2.5
+Param_Wave,sample,product_gpr,RBF x RBF,test,10000,4000,,0.03520028865765569,0.06249241361657412,False,128,64,8192,,,16.699681917001726,3.8347778750030557,,1e-10,,1.0,,1000.0,
