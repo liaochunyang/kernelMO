@@ -11,3 +11,15 @@ For the training dataset and in-distribution test dataset, we follow the same se
 For conservation law, diffusion reaction advection equation, and nonlinear klein gordon equation, we have the following ood datasets:
 - ood_par.h5: parameter range $\pm20\%$  (in-distribution test range $\pm10\%$). This is the same ood as the MNO paper.
 - ood_init_amp.h5: change the amplitudes (uniform [0,1] -> uniform [-2,2]) and number of sine functions (2 -> 4)
+- ood_init_GP.h5: initial conditions are generated from Gaussian process with variance 1 (RBF kernel with scale parameter 1)
+- ood_par_init_amp.h5: ood parametric functions and ood initial conditions (amplitudes and number of sine functions)
+- ood_par_init_GP.h5: ood parametric functions and ood initial conditions (GP)
+
+
+For parametric diffusion reaction equation and parametric wave equations, we have the following ood datasets:
+- ood_par_var.h5: ood parametric functions, RBF kernel, change variance 1 to 0.01
+- ood_par_scale.h5: ood parametric functions, RBF kernel, change scale 1 to 0.1
+- ood_par_matern.h5: ood parametric function, change RBF kernel to Matern kernel. Matern kernel: smoothness parameter 1/2 and scale 1. GP variance is still 1.
+- ood_init.h5: change the amplitudes (uniform [0,1] -> uniform [-2,2]) and number of sine functions (2 -> 4). **We may consider GP initial condition as well, though it may not be necessary to consider the difficult case here.**
+- ood_par_init.h5: ood parametric functions (scale) + ood initial conditions. **From function visualization, I realize that scale parameter changes the parameter functions the most, so I consider it here.** 
+
