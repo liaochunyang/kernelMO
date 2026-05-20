@@ -9,4 +9,5 @@ For the training dataset and in-distribution test dataset, we follow the same se
 ## Out-of-distribution:
 
 For conservation law, diffusion reaction advection equation, and nonlinear klein gordon equation, we have the following ood datasets:
-- ood_par: parameter range $\pm20%$
+- ood_par.h5: parameter range $\pm20\%$  (in-distribution test range $\pm10\%$). This is the same ood as the MNO paper.
+- ood_init_amp.h5: change the amplitudes (uniform [0,1] -> uniform [-2,2]) and number of sine functions (2 -> 4)
