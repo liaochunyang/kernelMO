@@ -40,6 +40,10 @@ Model | Conservation Law | Diffusion Reaction Advection | Nonlinear Klein Gordon
 ## Data description
 
 Please see each folder to find data descriptions.
+
+## Remark
+
+The current datasets are not reproducible because we do not fix the random seed for Gaussian process. We are editing the code to add random seed.
  
 ## To do list:
 
