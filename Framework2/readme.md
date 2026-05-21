@@ -6,6 +6,11 @@
 
 For the training dataset and in-distribution test dataset, we follow the same setting as the MNO paper.
 
+- Conservation Law: The components of $alpha$ are sampled from the ranges $\alpha_i \in [0.9\alpha_i^c,1.1\alpha_i^c]$ with the reference values given by $\alpha^c = [1,1,1,0.1]^\top$.
+- Diffusion Reaction Advection: The first three components are sampled from the ranges $\alpha_i \in [0.9\alpha_i^c,1.1\alpha_i^c]$ with the reference values given by $\alpha^c = [0.01,1,1]^\top$, while $\apha_4,\alpha_5% are drawn uniformly from $[1,3]$.
+- Nonlinear Klein Gordon: The components of $alpha$ are sampled from the ranges $\alpha_i \in [0.9\alpha_i^c,1.1\alpha_i^c]$ with the reference values given by $\alpha^c = [1,1,1]^\top$.
+- In distribution Gaussian process setting: Gaussian process with variance 1, RBF kernel with scale parameter 1. 
+
 ## Out-of-distribution:
 
 For conservation law, diffusion reaction advection equation, and nonlinear klein gordon equation, we have the following ood datasets:
