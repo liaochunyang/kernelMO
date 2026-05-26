@@ -37,18 +37,24 @@ Model | Conservation Law | Diffusion Reaction Advection | Nonlinear Klein Gordon
 | Vanilla Kernel |   7.43%   | 15.8%   | 43.0%   |
 | Framework 2   | 6.13% | 4.57%   | 8.36%  |
 
+## Data description
 
+Please see each folder to find data descriptions.
+
+## Remark
+
+The current datasets are not reproducible because we do not fix the random seed for Gaussian process. We are editing the code to add random seed.
  
 ## To do list:
 
-1. Framework 1: out-of-distribution for Parametric Diffusion Reaction Equation and Parametric Wave Equation, I do not know which ood we should take. The coefficient functions are now sampled from Gaussian Process.
+1. <s>Framework 1: out-of-distribution for Parametric Diffusion Reaction Equation and Parametric Wave Equation, I do not know which ood we should take. The coefficient functions are now sampled from Gaussian Process.</s>
 
-2. Framework 2: out-of-distribution, same as item 1.
+2. <s>Framework 2: out-of-distribution, same as item 1.</s>
 
-3. Framework 2: out-of-distribution initial conditions.
+3. <s>Framework 2: out-of-distribution initial conditions.</s>
 
-4. Framework 2: ood $\alpha$ and ood $u_0$.
+4. <s>Framework 2: ood $\alpha$ and ood $u_0$.</s>
 
 5. <s>Try Gaussian kernel and Matern kernel for all models, and tune the hyper-parameters.</s>
 
-We may need to rewirte the functions to generate ood datatsets.
+<s>We may need to rewirte the functions to generate ood datatsets.</s>
