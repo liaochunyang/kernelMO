@@ -1,0 +1,2 @@
+framework,pde,model,split,mean_relative_error,n_params,num_trunk,num_branch,num_leaf,n_train,n_eval,train_time_seconds,epochs,steps_per_epoch,lr,batch_size,normalization,x_num_model,output_step
+Framework2,Conservation_law,MNO,test,0.18623930859794985,2471803,30,30,13,1000,13000,213.98345174995484,50,16,0.0001,64,global,,1

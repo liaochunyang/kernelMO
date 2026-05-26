@@ -1,0 +1,2 @@
+framework,pde,model,split,mean_relative_error,n_params,num_trunk,num_branch,num_leaf,n_train,n_eval,train_time_seconds,epochs,steps_per_epoch,lr,batch_size,normalization,x_num_model,output_step
+Framework2,Conservation_law,DeepONet,test,0.17685549844285617,2067300,100,100,,1000,13000,121.92938449996291,50,16,0.0001,64,global,,1

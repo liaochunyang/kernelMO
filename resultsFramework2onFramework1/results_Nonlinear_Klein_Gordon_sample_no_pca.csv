@@ -1,0 +1,9 @@
+pde,task_mode,method,kernel,split,n_train,n_eval,ics_per_param,mean_relative_error,std_relative_error,pca,x_model_dim,coef_model_dim,y_model_dim,fw1_x_model_dim,fw1_y_model_dim,train_time_seconds,predict_time_seconds,length_scale,alpha,nu,coef_length_scale,coef_nu,state_length_scale,state_nu
+Nonlinear_Klein_Gordon,sample,vanilla,RBF,test,6400,1600,,0.28587424984766996,0.12956185378981877,False,128,3,8192,,,5.771700583994971,0.738645749996067,100.0,1e-10,,,,,
+Nonlinear_Klein_Gordon,sample,vanilla,RBF,ood,6400,800,,0.4523589913892688,0.20721983115442344,False,128,3,8192,,,5.771700583994971,0.37274437499581836,100.0,1e-10,,,,,
+Nonlinear_Klein_Gordon,sample,vanilla,Matern,test,6400,1600,,0.28587278485692663,0.12956291969605582,False,128,3,8192,,,5.849737042008201,0.7702832920040237,1.0,1e-10,2.5,,,,
+Nonlinear_Klein_Gordon,sample,vanilla,Matern,ood,6400,800,,0.4523583834161796,0.20722061565837516,False,128,3,8192,,,5.849737042008201,0.3918702919909265,1.0,1e-10,2.5,,,,
+Nonlinear_Klein_Gordon,sample,product_gpr,Matern x Matern,test,6400,1600,,0.00208894660517314,0.0019042804104060945,False,128,3,8192,,,13.557513958003256,2.6190245839970885,,1e-10,,1.0,2.5,1.0,3.5
+Nonlinear_Klein_Gordon,sample,product_gpr,Matern x Matern,ood,6400,800,,0.06718063993917273,0.09125856343379249,False,128,3,8192,,,13.557513958003256,1.320504917006474,,1e-10,,1.0,2.5,1.0,3.5
+Nonlinear_Klein_Gordon,sample,product_gpr,RBF x RBF,test,6400,1600,,0.003664324391103936,0.0024230120033648045,False,128,3,8192,,,6.095094832999166,0.7972594159946311,,1e-10,,1.0,,1.0,
+Nonlinear_Klein_Gordon,sample,product_gpr,RBF x RBF,ood,6400,800,,0.1120136236469435,0.24464704405070864,False,128,3,8192,,,6.095094832999166,0.4061621250002645,,1e-10,,1.0,,1.0,

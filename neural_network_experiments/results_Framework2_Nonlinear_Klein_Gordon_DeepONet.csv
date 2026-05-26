@@ -1,0 +1,2 @@
+framework,pde,model,split,mean_relative_error,n_params,num_trunk,num_branch,num_leaf,n_train,n_eval,train_time_seconds,epochs,steps_per_epoch,lr,batch_size,normalization,x_num_model,output_step
+Framework2,Nonlinear_Klein_Gordon,DeepONet,test,0.3774222101993859,2067100,100,100,,4000,10000,89.1869000410079,20,63,0.0001,64,global,,1
