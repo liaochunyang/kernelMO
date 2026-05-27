@@ -12,7 +12,19 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from data import PDESampleDataset, fit_normalizers, load_sample_data, normalize_data
-from models import ConcatDeepONet, FNO1d, MNO, NeuralOperatorFNO2d, TensorizedConcatDeepONet
+from models import (
+    ConcatDeepONet,
+    FNO1d,
+    MIONet,
+    MNO,
+    NeuralOperatorFNO2d,
+    TensorizedConcatDeepONet,
+    TensorizedDeepONet,
+)
+
+# Models that produce point-wise predictions and therefore support trunk
+# sub-sampling via `deeponet_loss`.
+TENSORIZED_MODELS = {"deeponet", "deeponet_nocoef", "mionet", "mno"}
 
 
 def relative_error(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -48,6 +60,27 @@ def make_model(args, n_x: int, coef_dim: int, n_t: int):
             n_t=n_t,
             num_trunk=args.num_trunk,
             num_branch=args.num_branch,
+            hidden_dim=args.hidden_dim,
+            branch_depth=args.branch_depth,
+            trunk_depth=args.trunk_depth,
+        )
+    if args.model == "deeponet_nocoef":
+        return TensorizedDeepONet(
+            n_x=n_x,
+            coef_dim=coef_dim,
+            n_t=n_t,
+            num_trunk=args.num_trunk,
+            num_branch=args.num_branch,
+            hidden_dim=args.hidden_dim,
+            branch_depth=args.branch_depth,
+            trunk_depth=args.trunk_depth,
+        )
+    if args.model == "mionet":
+        return MIONet(
+            n_x=n_x,
+            coef_dim=coef_dim,
+            n_t=n_t,
+            latent=args.latent_dim,
             hidden_dim=args.hidden_dim,
             branch_depth=args.branch_depth,
             trunk_depth=args.trunk_depth,
@@ -109,7 +142,7 @@ def train_one_epoch(model, loader, optimizer, args, device):
     losses = []
     for batch in loader:
         optimizer.zero_grad(set_to_none=True)
-        if args.model in {"deeponet", "mno"}:
+        if args.model in TENSORIZED_MODELS:
             loss = deeponet_loss(model, batch, args, device)
         else:
             x = batch["x"].to(device)
@@ -157,16 +190,23 @@ def evaluate(model, dataset, normalizers, args, device, split):
     }
 
 
-def main():
-    args = parse_args()
+def run_single(args) -> pd.DataFrame:
+    """Train one model on one (framework, pde) split and return the result rows.
+
+    Does not write any CSV; callers (``main`` or ``run_comparison``) decide how
+    to persist the returned DataFrame. A non-positive ``train_size`` means
+    "use ``train_fraction`` of the dataset" (the Framework1 convention).
+    """
     device = torch.device(args.device if args.device else ("cuda" if torch.cuda.is_available() else "cpu"))
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
+    train_size = args.train_size if args.train_size and args.train_size > 0 else None
     raw = load_sample_data(
         framework=args.framework,
         pde=args.pde,
-        train_size=args.train_size,
+        data_subdir=args.data_subdir,
+        train_size=train_size,
         train_fraction=args.train_fraction,
         output_start_index=args.output_start_index,
         output_step=args.output_step,
@@ -224,12 +264,6 @@ def main():
     result_df["num_branch"] = args.num_branch
     result_df["num_leaf"] = args.num_leaf if args.model == "mno" else np.nan
 
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    result_df.to_csv(output, index=False)
-    print(result_df)
-    print(f"Saved results to {output}")
-
     if args.checkpoint:
         checkpoint = Path(args.checkpoint)
         checkpoint.parent.mkdir(parents=True, exist_ok=True)
@@ -246,13 +280,30 @@ def main():
     if args.history_output:
         Path(args.history_output).write_text(json.dumps(history, indent=2))
 
+    return result_df
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train FNO, DeepONet, or MNO on PDE sample data.")
-    parser.add_argument("--model", choices=["fno", "neuralop_fno", "deeponet", "mno", "simple_deeponet"], required=True)
+
+def main():
+    args = parse_args()
+    result_df = run_single(args)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    result_df.to_csv(output, index=False)
+    print(result_df)
+    print(f"Saved results to {output}")
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Train FNO, DeepONet, MIONet, or MNO on PDE sample data.")
+    parser.add_argument(
+        "--model",
+        choices=["fno", "neuralop_fno", "deeponet", "deeponet_nocoef", "mionet", "mno", "simple_deeponet"],
+        required=True,
+    )
     parser.add_argument("--framework", default="Framework2")
     parser.add_argument("--pde", default="Conservation_law")
-    parser.add_argument("--train-size", type=int, default=10000)
+    parser.add_argument("--data-subdir", default="dataset_simple", help="Subfolder holding solutions.h5/ood.h5 (falls back to the PDE folder root).")
+    parser.add_argument("--train-size", type=int, default=10000, help="First-N training samples. Use <=0 to fall back to --train-fraction.")
     parser.add_argument("--train-fraction", type=float, default=0.8)
     parser.add_argument("--x-num-model", type=int, default=None, help="Optional number of spatial points to keep.")
     parser.add_argument("--output-start-index", type=int, default=None, help="First output time index. Defaults to input time index.")
@@ -283,7 +334,7 @@ def parse_args():
     parser.add_argument("--output", default="neural_network_experiments/results.csv")
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--history-output", default=None)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":

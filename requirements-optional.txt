@@ -1,0 +1,6 @@
+# Optional extras.
+#   optuna / scikit-optimize : hyperparameter sweeps in run_hyperparameter_sweep.py
+#   neuraloperator           : the official FNO wrapper (models.NeuralOperatorFNO2d)
+optuna>=3.5
+scikit-optimize>=0.9
+neuraloperator>=0.3

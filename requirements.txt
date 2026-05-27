@@ -1,0 +1,11 @@
+# Core dependencies for kernelMO (kernel methods + neural-operator comparison).
+# PyTorch is installed separately by setup_env.sh against a CUDA wheel index.
+numpy>=1.26,<2.3
+scipy>=1.11
+scikit-learn>=1.3
+h5py>=3.10
+pandas>=2.0
+matplotlib>=3.7
+tqdm>=4.66
+jupyter>=1.0
+ipykernel>=6.29

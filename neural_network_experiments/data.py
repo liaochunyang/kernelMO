@@ -69,7 +69,7 @@ def load_sample_data(
     coeff_key: str = "coeffs",
     use_ood: bool = True,
 ) -> SampleData:
-    data_path = Path(framework) / pde / data_subdir / data_filename
+    data_path = resolve_data_path(framework, pde, data_subdir, data_filename)
     with h5py.File(data_path, "r") as f:
         dataset = f[data_key][:]
         coef = f[coeff_key][:]
@@ -90,7 +90,7 @@ def load_sample_data(
         y_test=y[n_train:],
     )
 
-    ood_path = Path(framework) / pde / data_subdir / ood_filename
+    ood_path = resolve_data_path(framework, pde, data_subdir, ood_filename, must_exist=False)
     if use_ood and ood_path.exists():
         with h5py.File(ood_path, "r") as f:
             dataset_ood = f[data_key][:]
@@ -100,6 +100,27 @@ def load_sample_data(
         sample_data.y_ood = dataset_ood[:, time_idx][:, :, x_idx, channel_index]
 
     return sample_data
+
+
+def resolve_data_path(
+    framework: str,
+    pde: str,
+    data_subdir: str,
+    filename: str,
+    must_exist: bool = True,
+) -> Path:
+    """Locate an h5 file, trying ``<framework>/<pde>/<data_subdir>/<file>`` first
+    and falling back to ``<framework>/<pde>/<file>`` (Framework1 stores the data
+    directly in the PDE folder, Framework2 under ``dataset_simple``)."""
+    base = Path(framework) / pde
+    candidates = [base / data_subdir / filename, base / filename]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    if must_exist:
+        tried = ", ".join(str(c) for c in candidates)
+        raise FileNotFoundError(f"Could not find {filename}. Tried: {tried}")
+    return candidates[0]
 
 
 def spatial_indices(n_x: int, x_num_model: int | None) -> np.ndarray:

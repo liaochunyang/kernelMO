@@ -18,8 +18,35 @@ c  = coeffs
 
 - `neuralop_fno`: an official `neuralop.models.FNO` wrapper over the `(t, x)` grid. The input channels are `u0(x)` broadcast across time, broadcast coefficient values, and `(t, x)` coordinates.
 - `fno`: a lightweight local 1D FNO fallback over the spatial grid. Useful for debugging, but prefer `neuralop_fno` for serious FNO benchmarks.
-- `deeponet`: a tensorized DeepONet matching the implementation in `main.ipynb`; the branch input is `[coefficients, u0]`, and the trunk input is `(t, x)`.
-- `mno`: the MNO-style tensorized model from `main.ipynb`; it uses separate trunk `(t, x)`, branch `u0`, and leaf `coefficients` networks.
+- `deeponet`: a tensorized DeepONet matching the implementation in `main.ipynb`; the branch input is `[coefficients, u0]`, and the trunk input is `(t, x)`. (Comparison setting #2.)
+- `deeponet_nocoef`: the same tensorized DeepONet but the branch sees only `u0` — the coefficients are ignored. (Comparison setting #1.)
+- `mionet`: a MIONet with two branch networks (`u0` and `coefficients`) merged by an element-wise product and contracted with a shared `(t, x)` trunk. (Comparison setting #3.)
+- `mno`: the MNO-style tensorized model from `main.ipynb`; it uses separate trunk `(t, x)`, branch `u0`, and leaf `coefficients` networks. (Comparison setting #4.)
+
+## Full comparison driver
+
+`run_comparison.py` trains all four comparison settings across both frameworks and every PDE,
+writing one tidy CSV (`results_comparison.csv`). The split matches the kernel-method experiments
+exactly (first-N, no shuffle): Framework2 uses the first 10000 samples for training and the next
+4000 for testing; Framework1 uses the first 80% for training and the last 20% for testing. OOD rows
+are added automatically wherever an `ood.h5` is present.
+
+```bash
+python neural_network_experiments/run_comparison.py --epochs 50 --batch-size 64
+# subset example:
+python neural_network_experiments/run_comparison.py --frameworks Framework2 --pdes Conservation_law --epochs 5
+# sweep three network sizes (small/medium/large):
+python neural_network_experiments/run_comparison.py --sizes small medium large
+```
+
+Each row records `mean_relative_error`, `train_time_seconds`, `predict_time_seconds`, and `n_params`,
+and is tagged with `setting` and `size`. `--sizes` scales `num_trunk`/`num_branch` (DeepONet/MNO),
+`latent_dim` (MIONet), and the MLP `hidden_dim` together; the default is `medium` only.
+
+Open `comparison_visualize.ipynb` for the combined report. It splices the kernel-method results
+(`Framework{1,2}/results_*_no_pca.csv`, best of RBF/Matern per PDE) next to the four neural settings
+in one table, then shows in/out-of-distribution error, bar charts, training/inference time, and an
+accuracy-vs-size sweep. Run the notebook with the `Python (kernelMO)` Jupyter kernel.
 
 ## Quick Start
 

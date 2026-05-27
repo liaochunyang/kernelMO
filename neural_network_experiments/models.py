@@ -237,6 +237,111 @@ class MNO(nn.Module):
         return values.view(batch_size, self.n_t, self.n_x) if full_grid else values
 
 
+class TensorizedDeepONet(nn.Module):
+    """DeepONet WITHOUT coefficient input (comparison setting #1).
+
+    Identical tensorized contraction to ``TensorizedConcatDeepONet`` except the
+    branch sees only the initial condition ``u0``; the parametric function /
+    coefficients are ignored. This is the standard single-input DeepONet for
+    ``G: u0 -> u(t, x)`` and serves as the "no coeff" baseline.
+    """
+
+    def __init__(
+        self,
+        n_x: int,
+        coef_dim: int,
+        n_t: int,
+        num_trunk: int = 100,
+        num_branch: int = 100,
+        hidden_dim: int = 200,
+        trunk_depth: int = 2,
+        branch_depth: int = 2,
+    ):
+        super().__init__()
+        self.n_x = n_x
+        self.n_t = n_t
+        self.num_trunk = num_trunk
+        self.num_branch = num_branch
+        self.trunk = MLP(2, hidden_dim, num_trunk, max(trunk_depth - 1, 0), activation=nn.ReLU)
+        self.branch = MLP(n_x, hidden_dim, num_trunk * num_branch, max(branch_depth - 1, 0), activation=nn.ReLU)
+        self.const = nn.Parameter(torch.randn(num_trunk, num_branch))
+        self.activation = nn.ReLU()
+
+    def coordinate_grid(self, device, dtype):
+        t = torch.linspace(0, 1, self.n_t, device=device, dtype=dtype)
+        x = torch.linspace(0, 1, self.n_x, device=device, dtype=dtype)
+        tt, xx = torch.meshgrid(t, x, indexing="ij")
+        return torch.stack([tt.reshape(-1), xx.reshape(-1)], dim=-1)
+
+    def forward(self, x: torch.Tensor, coef: torch.Tensor | None = None, coords: torch.Tensor | None = None) -> torch.Tensor:
+        batch_size = x.shape[0]
+        if coords is None:
+            coords = self.coordinate_grid(x.device, x.dtype)
+            full_grid = True
+        else:
+            full_grid = coords.shape[0] == self.n_t * self.n_x
+
+        trunk_features = self.activation(self.trunk(coords)).view(1, coords.shape[0], self.num_trunk)
+        trunk_features = trunk_features.expand(batch_size, -1, -1)
+        branch_features = self.activation(self.branch(x)).view(batch_size, self.num_trunk, self.num_branch)
+        values = torch.einsum("bdt,btk,tk->bd", trunk_features, branch_features, self.const)
+        return values.view(batch_size, self.n_t, self.n_x) if full_grid else values
+
+
+class MIONet(nn.Module):
+    """Multiple-input operator network (Jin, Meng & Lu, 2022) — setting #3.
+
+    Two independent branch networks encode the two input functions:
+
+    - ``branch_u``: initial condition ``u0``,
+    - ``branch_c``: parametric function / coefficients.
+
+    Their latent codes are merged by an element-wise (Hadamard) product and
+    contracted with a shared trunk over the query coordinates ``(t, x)``:
+
+        out(b, y) = sum_p branch_u(b)_p * branch_c(b)_p * trunk(y)_p + bias
+    """
+
+    def __init__(
+        self,
+        n_x: int,
+        coef_dim: int,
+        n_t: int,
+        latent: int = 128,
+        hidden_dim: int = 200,
+        branch_depth: int = 2,
+        trunk_depth: int = 2,
+    ):
+        super().__init__()
+        self.n_x = n_x
+        self.n_t = n_t
+        self.latent = latent
+        self.branch_u = MLP(n_x, hidden_dim, latent, max(branch_depth - 1, 0), activation=nn.ReLU)
+        self.branch_c = MLP(coef_dim, hidden_dim, latent, max(branch_depth - 1, 0), activation=nn.ReLU)
+        self.trunk = MLP(2, hidden_dim, latent, max(trunk_depth - 1, 0), activation=nn.ReLU)
+        self.bias = nn.Parameter(torch.zeros(1))
+        self.activation = nn.ReLU()
+
+    def coordinate_grid(self, device, dtype):
+        t = torch.linspace(0, 1, self.n_t, device=device, dtype=dtype)
+        x = torch.linspace(0, 1, self.n_x, device=device, dtype=dtype)
+        tt, xx = torch.meshgrid(t, x, indexing="ij")
+        return torch.stack([tt.reshape(-1), xx.reshape(-1)], dim=-1)
+
+    def forward(self, x: torch.Tensor, coef: torch.Tensor, coords: torch.Tensor | None = None) -> torch.Tensor:
+        batch_size = x.shape[0]
+        if coords is None:
+            coords = self.coordinate_grid(x.device, x.dtype)
+            full_grid = True
+        else:
+            full_grid = coords.shape[0] == self.n_t * self.n_x
+
+        merged = self.branch_u(x) * self.branch_c(coef)
+        trunk_features = self.activation(self.trunk(coords))
+        values = merged @ trunk_features.T + self.bias
+        return values.view(batch_size, self.n_t, self.n_x) if full_grid else values
+
+
 class NeuralOperatorFNO2d(nn.Module):
     """Official neuraloperator FNO wrapper for [coeff, u0] -> u(t, x).
 
