@@ -31,17 +31,28 @@ exactly (first-N, no shuffle): Framework2 uses the first 10000 samples for train
 4000 for testing; Framework1 uses the first 80% for training and the last 20% for testing. OOD rows
 are added automatically wherever an `ood.h5` is present.
 
+The `.h5` data is not in the repo. It lives at `/home/shared/dataset/KernelMOL`
+(`Framework{1,2}/<pde>/dataset_simple/{solutions,ood}.h5`), which is the default `--data-root`.
+Override with `--data-root` (or `--data-root .` if you have local copies under the repo).
+
 ```bash
 python neural_network_experiments/run_comparison.py --epochs 50 --batch-size 64
 # subset example:
 python neural_network_experiments/run_comparison.py --frameworks Framework2 --pdes Conservation_law --epochs 5
 # sweep three network sizes (small/medium/large):
 python neural_network_experiments/run_comparison.py --sizes small medium large
+# pin to a free GPU (nodes are shared):
+CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0 python neural_network_experiments/run_comparison.py
 ```
 
 Each row records `mean_relative_error`, `train_time_seconds`, `predict_time_seconds`, and `n_params`,
-and is tagged with `setting` and `size`. `--sizes` scales `num_trunk`/`num_branch` (DeepONet/MNO),
-`latent_dim` (MIONet), and the MLP `hidden_dim` together; the default is `medium` only.
+and is tagged with `setting`, `size`, `split`, and `ood_file`. `--sizes` scales `num_trunk`/`num_branch`
+(DeepONet/MNO), `latent_dim` (MIONet), and the MLP `hidden_dim` together; the default is `medium` only.
+
+By default (`--ood-filenames auto`) the driver evaluates **every** `ood*.h5` present for a PDE, one
+`split=ood` row per file (tagged by `ood_file`). This is how the parametric PDEs — which ship only
+variant files like `ood_par_scale.h5`, no plain `ood.h5` — get OOD rows. Restrict with e.g.
+`--ood-filenames ood.h5 ood_par_scale.h5`, or skip OOD with `--no-ood`.
 
 Open `comparison_visualize.ipynb` for the combined report. It splices the kernel-method results
 (`Framework{1,2}/results_*_no_pca.csv`, best of RBF/Matern per PDE) next to the four neural settings

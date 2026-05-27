@@ -4,3 +4,6 @@ venv/
 # Python caches
 __pycache__/
 *.py[cod]
+
+# Model checkpoints from run_comparison_all.sh
+neural_network_experiments/checkpoints/

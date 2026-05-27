@@ -11,7 +11,15 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from data import PDESampleDataset, fit_normalizers, load_sample_data, normalize_data
+from data import (
+    PDESampleDataset,
+    discover_ood_files,
+    fit_normalizers,
+    load_ood_split,
+    load_sample_data,
+    normalize_data,
+    normalize_ood_split,
+)
 from models import (
     ConcatDeepONet,
     FNO1d,
@@ -205,13 +213,14 @@ def run_single(args) -> pd.DataFrame:
     raw = load_sample_data(
         framework=args.framework,
         pde=args.pde,
+        data_root=args.data_root,
         data_subdir=args.data_subdir,
         train_size=train_size,
         train_fraction=args.train_fraction,
         output_start_index=args.output_start_index,
         output_step=args.output_step,
         x_num_model=args.x_num_model,
-        use_ood=not args.no_ood,
+        use_ood=False,  # OOD files are loaded separately below to support several per PDE.
     )
     normalizers = fit_normalizers(raw)
     data = normalize_data(raw, normalizers, mode=args.normalization)
@@ -222,12 +231,14 @@ def run_single(args) -> pd.DataFrame:
     test_dataset = PDESampleDataset(
         data.x_test, data.coef_test, data.y_test, data.y_test_mean, data.y_test_std
     )
-    ood_dataset = (
-        PDESampleDataset(data.x_ood, data.coef_ood, data.y_ood, data.y_ood_mean, data.y_ood_std)
-        if data.x_ood is not None
-        else None
-    )
     loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False)
+
+    if args.no_ood:
+        ood_files = []
+    elif args.ood_filenames == ["auto"]:
+        ood_files = discover_ood_files(args.framework, args.pde, args.data_root, args.data_subdir)
+    else:
+        ood_files = args.ood_filenames
 
     n_x = data.x_train.shape[1]
     coef_dim = data.coef_train.shape[1]
@@ -244,11 +255,30 @@ def run_single(args) -> pd.DataFrame:
             print(f"epoch {epoch:04d} train_mse={loss:.4e}")
     train_time = perf_counter() - start_train
 
-    rows = []
-    for result in [evaluate(model, test_dataset, normalizers, args, device, "test")]:
+    test_result = evaluate(model, test_dataset, normalizers, args, device, "test")
+    test_result["ood_file"] = ""
+    rows = [test_result]
+    for ood_filename in ood_files:
+        split = load_ood_split(
+            framework=args.framework,
+            pde=args.pde,
+            ood_filename=ood_filename,
+            data_root=args.data_root,
+            data_subdir=args.data_subdir,
+            output_start_index=args.output_start_index,
+            output_step=args.output_step,
+            x_num_model=args.x_num_model,
+        )
+        if split is None:
+            continue
+        x_ood, coef_ood, y_ood = split
+        x_ood, coef_ood, y_ood, y_mean, y_std = normalize_ood_split(
+            x_ood, coef_ood, y_ood, normalizers, mode=args.normalization
+        )
+        ood_dataset = PDESampleDataset(x_ood, coef_ood, y_ood, y_mean, y_std)
+        result = evaluate(model, ood_dataset, normalizers, args, device, "ood")
+        result["ood_file"] = ood_filename
         rows.append(result)
-    if ood_dataset is not None:
-        rows.append(evaluate(model, ood_dataset, normalizers, args, device, "ood"))
 
     result_df = pd.DataFrame(rows)
     result_df.insert(0, "model", args.model)
@@ -302,6 +332,7 @@ def parse_args(argv=None):
     )
     parser.add_argument("--framework", default="Framework2")
     parser.add_argument("--pde", default="Conservation_law")
+    parser.add_argument("--data-root", default=".", help="Root holding <framework>/<pde>/... (e.g. /home/shared/dataset/KernelMOL).")
     parser.add_argument("--data-subdir", default="dataset_simple", help="Subfolder holding solutions.h5/ood.h5 (falls back to the PDE folder root).")
     parser.add_argument("--train-size", type=int, default=10000, help="First-N training samples. Use <=0 to fall back to --train-fraction.")
     parser.add_argument("--train-fraction", type=float, default=0.8)
@@ -310,6 +341,8 @@ def parse_args(argv=None):
     parser.add_argument("--output-step", type=int, default=1, help="Keep every k-th output time step.")
     parser.add_argument("--normalization", choices=["global", "per_sample_input", "none"], default="global")
     parser.add_argument("--no-ood", action="store_true")
+    parser.add_argument("--ood-filenames", nargs="*", default=["auto"],
+                        help="OOD h5 basenames to evaluate. 'auto' (default) discovers every ood*.h5 for the PDE.")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--eval-batch-size", type=int, default=32)

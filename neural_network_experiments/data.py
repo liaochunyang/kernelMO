@@ -55,6 +55,7 @@ class Normalizers:
 def load_sample_data(
     framework: str = "Framework2",
     pde: str = "Conservation_law",
+    data_root: str = ".",
     data_subdir: str = "dataset_simple",
     data_filename: str = "solutions.h5",
     ood_filename: str = "ood.h5",
@@ -69,7 +70,7 @@ def load_sample_data(
     coeff_key: str = "coeffs",
     use_ood: bool = True,
 ) -> SampleData:
-    data_path = resolve_data_path(framework, pde, data_subdir, data_filename)
+    data_path = resolve_data_path(framework, pde, data_subdir, data_filename, data_root=data_root)
     with h5py.File(data_path, "r") as f:
         dataset = f[data_key][:]
         coef = f[coeff_key][:]
@@ -90,7 +91,7 @@ def load_sample_data(
         y_test=y[n_train:],
     )
 
-    ood_path = resolve_data_path(framework, pde, data_subdir, ood_filename, must_exist=False)
+    ood_path = resolve_data_path(framework, pde, data_subdir, ood_filename, data_root=data_root, must_exist=False)
     if use_ood and ood_path.exists():
         with h5py.File(ood_path, "r") as f:
             dataset_ood = f[data_key][:]
@@ -107,12 +108,13 @@ def resolve_data_path(
     pde: str,
     data_subdir: str,
     filename: str,
+    data_root: str = ".",
     must_exist: bool = True,
 ) -> Path:
-    """Locate an h5 file, trying ``<framework>/<pde>/<data_subdir>/<file>`` first
-    and falling back to ``<framework>/<pde>/<file>`` (Framework1 stores the data
-    directly in the PDE folder, Framework2 under ``dataset_simple``)."""
-    base = Path(framework) / pde
+    """Locate an h5 file under ``<data_root>/<framework>/<pde>/``, trying the
+    ``<data_subdir>/<file>`` layout first and falling back to ``<file>`` directly
+    in the PDE folder."""
+    base = Path(data_root) / framework / pde
     candidates = [base / data_subdir / filename, base / filename]
     for candidate in candidates:
         if candidate.exists():
@@ -121,6 +123,77 @@ def resolve_data_path(
         tried = ", ".join(str(c) for c in candidates)
         raise FileNotFoundError(f"Could not find {filename}. Tried: {tried}")
     return candidates[0]
+
+
+def discover_ood_files(
+    framework: str,
+    pde: str,
+    data_root: str = ".",
+    data_subdir: str = "dataset_simple",
+) -> list[str]:
+    """Return the sorted basenames of every ``ood*.h5`` file for a PDE.
+
+    Standard PDEs ship ``ood.h5``; the parametric PDEs ship only variant files
+    (e.g. ``ood_par_scale.h5``), so auto-discovery is how they get OOD rows.
+    """
+    base = resolve_data_path(framework, pde, data_subdir, "ood.h5", data_root=data_root, must_exist=False).parent
+    if not base.exists():
+        return []
+    return sorted(p.name for p in base.glob("ood*.h5"))
+
+
+def load_ood_split(
+    framework: str,
+    pde: str,
+    ood_filename: str,
+    data_root: str = ".",
+    data_subdir: str = "dataset_simple",
+    input_time_index: int = 0,
+    output_start_index: int | None = None,
+    output_step: int = 1,
+    x_num_model: int | None = None,
+    channel_index: int = 0,
+    data_key: str = "data",
+    coeff_key: str = "coeffs",
+):
+    """Load one OOD file with the same slicing as the train/test split, or None."""
+    path = resolve_data_path(framework, pde, data_subdir, ood_filename, data_root=data_root, must_exist=False)
+    if not path.exists():
+        return None
+    with h5py.File(path, "r") as f:
+        dataset = f[data_key][:]
+        coef = f[coeff_key][:]
+    x_idx = spatial_indices(dataset.shape[2], x_num_model)
+    output_start = input_time_index if output_start_index is None else output_start_index
+    time_idx = np.arange(output_start, dataset.shape[1], output_step)
+    x = dataset[:, input_time_index, x_idx, channel_index]
+    y = dataset[:, time_idx][:, :, x_idx, channel_index]
+    return x, coef, y
+
+
+def normalize_ood_split(x, coef, y, normalizers: Normalizers, mode: str = "global", eps: float = 1e-6):
+    """Normalize one OOD split consistently with the training normalization.
+
+    Returns (x, coef, y, y_mean, y_std); the per-sample mean/std are None unless
+    mode == 'per_sample_input', mirroring `normalize_data`.
+    """
+    if mode == "none":
+        return x, coef, y, None, None
+    if mode == "per_sample_input":
+        mean = x.mean(axis=1, keepdims=True)
+        std = x.std(axis=1, keepdims=True) + eps
+        x_norm = (x - mean) / std
+        y_norm = (y - mean[:, None, :]) / std[:, None, :]
+        return x_norm, normalizers.normalize_coef(coef), y_norm, mean[:, None, :], std[:, None, :]
+    if mode != "global":
+        raise ValueError("normalization mode must be 'global', 'per_sample_input', or 'none'.")
+    return (
+        normalizers.normalize_x(x),
+        normalizers.normalize_coef(coef),
+        normalizers.normalize_y(y),
+        None,
+        None,
+    )
 
 
 def spatial_indices(n_x: int, x_num_model: int | None) -> np.ndarray:

@@ -233,7 +233,11 @@ class MNO(nn.Module):
         y_out = self.activation(self.trunk(coords)).reshape(1, n_points, self.num_leaf, self.num_trunk)
         y_out = y_out.expand(batch_size, -1, -1, -1)
         u_out = self.activation(self.branch(x)).reshape(batch_size, self.num_leaf, self.num_trunk, self.num_branch)
-        values = torch.einsum("bl,bdlt,bltk,ltk->bd", c_out, y_out, u_out, self.const)
+        # Contract the branch modes (k) and fold in the leaf weights before
+        # touching the points axis (d), avoiding a huge (b, d, l, t, k) tensor.
+        branch_weighted = torch.einsum("bltk,ltk->blt", u_out, self.const)
+        leaf_weighted = c_out.unsqueeze(-1) * branch_weighted
+        values = torch.einsum("bdlt,blt->bd", y_out, leaf_weighted)
         return values.view(batch_size, self.n_t, self.n_x) if full_grid else values
 
 
@@ -284,7 +288,10 @@ class TensorizedDeepONet(nn.Module):
         trunk_features = self.activation(self.trunk(coords)).view(1, coords.shape[0], self.num_trunk)
         trunk_features = trunk_features.expand(batch_size, -1, -1)
         branch_features = self.activation(self.branch(x)).view(batch_size, self.num_trunk, self.num_branch)
-        values = torch.einsum("bdt,btk,tk->bd", trunk_features, branch_features, self.const)
+        # Contract the branch modes first to avoid materializing a
+        # (batch, points, num_trunk, num_branch) intermediate.
+        branch_weighted = torch.einsum("btk,tk->bt", branch_features, self.const)
+        values = torch.einsum("bdt,bt->bd", trunk_features, branch_weighted)
         return values.view(batch_size, self.n_t, self.n_x) if full_grid else values
 
 

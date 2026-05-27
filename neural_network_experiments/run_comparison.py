@@ -88,6 +88,7 @@ def build_run_argv(model: str, framework: str, pde: str, size_cfg: dict, args) -
         "--model", model,
         "--framework", framework,
         "--pde", pde,
+        "--data-root", args.data_root,
         "--data-subdir", args.data_subdir,
         "--epochs", str(args.epochs),
         "--batch-size", str(args.batch_size),
@@ -108,6 +109,8 @@ def build_run_argv(model: str, framework: str, pde: str, size_cfg: dict, args) -
         argv += ["--device", args.device]
     if args.no_ood:
         argv += ["--no-ood"]
+    if args.ood_filenames:
+        argv += ["--ood-filenames", *args.ood_filenames]
     argv += split_argv(framework)
     return argv
 
@@ -167,8 +170,10 @@ def parse_args():
                         help="Subset of comparison settings (default: all four).")
     parser.add_argument("--sizes", nargs="*", choices=list(SIZE_PRESETS), default=None,
                         help="Network-size presets to sweep (default: medium only).")
+    parser.add_argument("--data-root", default="/home/shared/dataset/KernelMOL",
+                        help="Root holding Framework{1,2}/<pde>/dataset_simple/*.h5.")
     parser.add_argument("--data-subdir", default="dataset_simple")
-    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--eval-batch-size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -177,6 +182,8 @@ def parse_args():
     parser.add_argument("--trunk-batch-size", type=int, default=2048)
     parser.add_argument("--num-leaf", type=int, default=2)
     parser.add_argument("--no-ood", action="store_true")
+    parser.add_argument("--ood-filenames", nargs="*", default=["auto"],
+                        help="OOD h5 basenames to evaluate per PDE. 'auto' (default) discovers every ood*.h5.")
     parser.add_argument("--device", default=None)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--log-every", type=int, default=10)
