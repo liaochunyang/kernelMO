@@ -5,11 +5,20 @@
 #   bash run_comparison_all.sh                 # full comparison (medium size, 50 epochs)
 #   bash run_comparison_all.sh --quick         # 1-PDE / 1-model sanity run (~1 min)
 #   bash run_comparison_all.sh --sweep         # size sweep small/medium/large (~3x runtime)
+#   bash run_comparison_all.sh --mno           # ONLY the MNO model (across --sizes)
 #   bash run_comparison_all.sh --setup         # (re)build the venv first, then run
+#
+# run_comparison.py merges into the existing results CSV by default, so running
+# only --mno (or MODELS="...") adds/refreshes those rows and LEAVES the
+# unchanged deeponet/mionet rows in place. Pass `-- --overwrite` to start fresh.
+#
+# To RESUME an interrupted sweep (only train combos not already in the CSV):
+#   EPOCHS=200 GPU=0 bash run_comparison_all.sh --sweep -- --skip-existing
+# (do not combine with --overwrite, which discards the CSV being resumed from).
 #
 # Env overrides:
 #   EPOCHS=50 BATCH=64 GPU=0 SIZES="small medium large" OUTPUT=path/to.csv \
-#     bash run_comparison_all.sh
+#   MODELS="mno" bash run_comparison_all.sh
 #
 # Extra args after `--` are forwarded to run_comparison.py, e.g.:
 #   bash run_comparison_all.sh -- --frameworks Framework2 --pdes Conservation_law
@@ -24,6 +33,7 @@ BATCH="${BATCH:-64}"
 SIZES="${SIZES:-medium}"
 OUTPUT="${OUTPUT:-}"   # resolved per-mode below so --quick doesn't clobber the real CSV
 CKPT_DIR="${CKPT_DIR:-neural_network_experiments/checkpoints}"
+MODELS="${MODELS:-}"  # empty -> run_comparison.py default (all settings)
 DO_SETUP=0
 QUICK=0
 EXTRA_ARGS=()
@@ -34,10 +44,15 @@ while [[ $# -gt 0 ]]; do
     --setup) DO_SETUP=1 ; shift ;;
     --quick) QUICK=1 ; shift ;;
     --sweep) SIZES="small medium large" ; shift ;;
+    --mno)   MODELS="mno" ; shift ;;
     --) shift ; EXTRA_ARGS=("$@") ; break ;;
     *) echo "Unknown option: $1" ; exit 1 ;;
   esac
 done
+
+# Forward an explicit model subset only when one was requested.
+MODEL_ARGS=()
+[[ -n "${MODELS}" ]] && MODEL_ARGS=(--models ${MODELS})
 
 # ---- 0. environment --------------------------------------------------------
 if [[ "${DO_SETUP}" -eq 1 || ! -d "${VENV_DIR}" ]]; then
@@ -69,9 +84,10 @@ if [[ "${QUICK}" -eq 1 ]]; then
     --epochs 1 --output "${OUTPUT}" --checkpoint-dir "${CKPT_DIR}" "${EXTRA_ARGS[@]}"
 else
   OUTPUT="${OUTPUT:-neural_network_experiments/results_comparison.csv}"
-  echo ">> Full comparison (sizes: ${SIZES}, epochs: ${EPOCHS}, checkpoints: ${CKPT_DIR})"
+  echo ">> Full comparison (sizes: ${SIZES}, epochs: ${EPOCHS}, models: ${MODELS:-all}, checkpoints: ${CKPT_DIR})"
   python neural_network_experiments/run_comparison.py \
     --sizes ${SIZES} --epochs "${EPOCHS}" --batch-size "${BATCH}" \
+    "${MODEL_ARGS[@]}" \
     --output "${OUTPUT}" --checkpoint-dir "${CKPT_DIR}" "${EXTRA_ARGS[@]}"
 fi
 
