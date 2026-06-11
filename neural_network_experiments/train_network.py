@@ -164,17 +164,45 @@ def train_one_epoch(model, loader, optimizer, args, device):
     return float(np.mean(losses))
 
 
+def predict_full_grid(model, x, coef, n_t, n_x, point_chunk):
+    """Predict the full (t, x) grid, splitting the trunk points into chunks.
+
+    Tensorized models contract over a (batch, points, modes, modes) intermediate,
+    so evaluating the whole n_t*n_x grid at once can OOM at large sizes. Running
+    the points in chunks of ``point_chunk`` bounds that intermediate the same way
+    ``deeponet_loss`` subsamples trunk points during training. ``point_chunk<=0``
+    (or a chunk covering the whole grid) falls back to a single full-grid call.
+    Returns predictions shaped (batch, n_t, n_x).
+    """
+    coords = model.coordinate_grid(x.device, x.dtype)  # (n_t*n_x, 2)
+    total = coords.shape[0]
+    if point_chunk <= 0 or point_chunk >= total:
+        return model(x, coef)
+    preds = [
+        model(x, coef, coords=coords[start:start + point_chunk]).reshape(x.shape[0], -1)
+        for start in range(0, total, point_chunk)
+    ]
+    return torch.cat(preds, dim=1).view(x.shape[0], n_t, n_x)
+
+
 @torch.no_grad()
 def evaluate(model, dataset, normalizers, args, device, split):
     loader = DataLoader(dataset, batch_size=args.eval_batch_size, shuffle=False)
     model.eval()
+    # FNO variants emit the full grid in one cheap pass and take no `coords`;
+    # the tensorized models do, so chunk their trunk points to bound memory.
+    supports_coords = hasattr(model, "coordinate_grid")
     errors = []
     start = perf_counter()
     for batch in loader:
         x = batch["x"].to(device)
         coef = batch["coef"].to(device)
         y_norm = batch["y"].to(device)
-        pred_norm = model(x, coef)
+        if supports_coords:
+            n_t, n_x = y_norm.shape[1], y_norm.shape[2]
+            pred_norm = predict_full_grid(model, x, coef, n_t, n_x, args.eval_trunk_batch_size)
+        else:
+            pred_norm = model(x, coef)
         if "y_mean" in batch and "y_std" in batch:
             y_mean = batch["y_mean"].to(device)
             y_std = batch["y_std"].to(device)
@@ -364,6 +392,10 @@ def parse_args(argv=None):
     parser.add_argument("--trunk-depth", type=int, default=3)
     parser.add_argument("--leaf-depth", type=int, default=2)
     parser.add_argument("--trunk-batch-size", type=int, default=2048)
+    parser.add_argument("--eval-trunk-batch-size", type=int, default=1024,
+                        help="Trunk points per chunk during full-grid evaluation "
+                             "(<=0 evaluates the whole grid at once). Bounds the "
+                             "tensorized-model einsum memory; tensorized models only.")
     parser.add_argument("--output", default="neural_network_experiments/results.csv")
     parser.add_argument("--checkpoint", default=None)
     parser.add_argument("--history-output", default=None)

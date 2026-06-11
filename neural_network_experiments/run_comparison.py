@@ -121,6 +121,7 @@ def build_run_argv(model: str, framework: str, pde: str, size_name: str, args) -
         "--weight-decay", str(args.weight_decay),
         "--normalization", args.normalization,
         "--trunk-batch-size", str(args.trunk_batch_size),
+        "--eval-trunk-batch-size", str(args.eval_trunk_batch_size),
         "--num-trunk", str(override.get("num_trunk", size_cfg["num_trunk"])),
         "--num-branch", str(override.get("num_branch", size_cfg["num_branch"])),
         "--num-leaf", str(override.get("num_leaf", args.num_leaf)),
@@ -259,6 +260,10 @@ def parse_args():
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--normalization", choices=["global", "per_sample_input", "none"], default="global")
     parser.add_argument("--trunk-batch-size", type=int, default=2048)
+    parser.add_argument("--eval-trunk-batch-size", type=int, default=1024,
+                        help="Trunk points per chunk during full-grid evaluation "
+                             "(<=0 evaluates the whole grid at once). Bounds the "
+                             "tensorized-model einsum memory at large sizes.")
     parser.add_argument("--num-leaf", type=int, default=2)
     parser.add_argument("--no-ood", action="store_true")
     parser.add_argument("--ood-filenames", nargs="*", default=["auto"],
