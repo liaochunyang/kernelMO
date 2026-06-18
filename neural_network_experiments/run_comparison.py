@@ -54,7 +54,9 @@ SETTINGS = {
 }
 
 # Network-size presets. `num_trunk`/`num_branch` drive the DeepONet branch
-# output; `latent` drives MIONet; `hidden_dim` is the MLP width for all of them.
+# output and the MIONet branch widths (full bilinear: trunk emits
+# num_branch*num_branch modes); `hidden_dim` is the MLP width for all of them.
+# `latent_dim` is retained for the legacy simple_deeponet only.
 SIZE_PRESETS = {
     "small": {"num_trunk": 50, "num_branch": 50, "latent_dim": 64, "hidden_dim": 100},
     "medium": {"num_trunk": 100, "num_branch": 100, "latent_dim": 128, "hidden_dim": 200},

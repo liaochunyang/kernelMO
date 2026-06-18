@@ -88,7 +88,9 @@ def make_model(args, n_x: int, coef_dim: int, n_t: int):
             n_x=n_x,
             coef_dim=coef_dim,
             n_t=n_t,
-            latent=args.latent_dim,
+            num_branch=args.num_branch,
+            num_branch2=args.num_branch2,
+            low_rank=args.low_rank,
             hidden_dim=args.hidden_dim,
             branch_depth=args.branch_depth,
             trunk_depth=args.trunk_depth,
@@ -385,6 +387,10 @@ def parse_args(argv=None):
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--num-trunk", type=int, default=100)
     parser.add_argument("--num-branch", type=int, default=100)
+    parser.add_argument("--num-branch2", type=int, default=None,
+                        help="MIONet second branch (coefficients) width. Defaults to --num-branch.")
+    parser.add_argument("--low-rank", action="store_true",
+                        help="MIONet low-rank (Hadamard) contraction; default is repo full bilinear.")
     parser.add_argument("--num-leaf", type=int, default=2)
     parser.add_argument("--latent-dim", type=int, default=128)
     parser.add_argument("--hidden-dim", type=int, default=256)

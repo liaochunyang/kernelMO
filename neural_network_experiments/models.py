@@ -298,15 +298,24 @@ class TensorizedDeepONet(nn.Module):
 class MIONet(nn.Module):
     """Multiple-input operator network (Jin, Meng & Lu, 2022) — setting #3.
 
+    Faithful port of ``MIONet`` in JingminSun/MNO ``src/model/build_model.py``.
     Two independent branch networks encode the two input functions:
 
-    - ``branch_u``: initial condition ``u0``,
-    - ``branch_c``: parametric function / coefficients.
+    - ``branch1``/``branch_u``: initial condition ``u0`` -> ``num_branch1`` modes,
+    - ``branch2``/``branch_c``: coefficients -> ``num_branch2`` modes,
 
-    Their latent codes are merged by an element-wise (Hadamard) product and
-    contracted with a shared trunk over the query coordinates ``(t, x)``:
+    and a shared trunk encodes the query coordinates ``(t, x)``. ReLU is applied
+    to all three network outputs. Two contraction modes (repo ``low_rank``):
 
-        out(b, y) = sum_p branch_u(b)_p * branch_c(b)_p * trunk(y)_p + bias
+    - full bilinear (``low_rank=False``, repo default): the trunk emits
+      ``num_branch1 * num_branch2`` modes reshaped to ``(i, j)`` and combined as
+
+          out(b, y) = sum_{i,j} trunk(y)_{ij} branch1(b)_i branch2(b)_j + bias
+
+    - low-rank (``low_rank=True``, requires ``num_branch1 == num_branch2``): the
+      trunk emits ``num_branch1`` modes merged by a Hadamard product
+
+          out(b, y) = sum_k trunk(y)_k branch1(b)_k branch2(b)_k + bias
     """
 
     def __init__(
@@ -314,7 +323,9 @@ class MIONet(nn.Module):
         n_x: int,
         coef_dim: int,
         n_t: int,
-        latent: int = 128,
+        num_branch: int = 100,
+        num_branch2: int | None = None,
+        low_rank: bool = False,
         hidden_dim: int = 200,
         branch_depth: int = 2,
         trunk_depth: int = 2,
@@ -322,11 +333,19 @@ class MIONet(nn.Module):
         super().__init__()
         self.n_x = n_x
         self.n_t = n_t
-        self.latent = latent
-        self.branch_u = MLP(n_x, hidden_dim, latent, max(branch_depth - 1, 0), activation=nn.ReLU)
-        self.branch_c = MLP(coef_dim, hidden_dim, latent, max(branch_depth - 1, 0), activation=nn.ReLU)
-        self.trunk = MLP(2, hidden_dim, latent, max(trunk_depth - 1, 0), activation=nn.ReLU)
-        self.bias = nn.Parameter(torch.zeros(1))
+        self.num_branch1 = num_branch
+        self.num_branch2 = num_branch if num_branch2 is None else num_branch2
+        self.low_rank = low_rank
+        if low_rank:
+            assert self.num_branch1 == self.num_branch2, "low_rank MIONet requires num_branch1 == num_branch2"
+            self.num_trunk = self.num_branch1
+        else:
+            self.num_trunk = self.num_branch1 * self.num_branch2
+
+        self.branch1 = MLP(n_x, hidden_dim, self.num_branch1, max(branch_depth - 1, 0), activation=nn.ReLU)
+        self.branch2 = MLP(coef_dim, hidden_dim, self.num_branch2, max(branch_depth - 1, 0), activation=nn.ReLU)
+        self.trunk = MLP(2, hidden_dim, self.num_trunk, max(trunk_depth - 1, 0), activation=nn.ReLU)
+        self.bias = nn.Parameter(torch.randn(1))
         self.activation = nn.ReLU()
 
     def coordinate_grid(self, device, dtype):
@@ -343,9 +362,18 @@ class MIONet(nn.Module):
         else:
             full_grid = coords.shape[0] == self.n_t * self.n_x
 
-        merged = self.branch_u(x) * self.branch_c(coef)
-        trunk_features = self.activation(self.trunk(coords))
-        values = merged @ trunk_features.T + self.bias
+        branch1_out = self.activation(self.branch1(x))
+        branch2_out = self.activation(self.branch2(coef))
+        trunk_out = self.activation(self.trunk(coords))  # (points, num_trunk)
+        if self.low_rank:
+            # out(b, p) = sum_k trunk(p)_k branch1(b)_k branch2(b)_k
+            values = torch.einsum("pk,bk,bk->bp", trunk_out, branch1_out, branch2_out)
+        else:
+            # out(b, p) = sum_{i,j} trunk(p)_{ij} branch1(b)_i branch2(b)_j
+            trunk_out = trunk_out.view(coords.shape[0], self.num_branch1, self.num_branch2)
+            tmp = torch.einsum("pij,bi->bpj", trunk_out, branch1_out)
+            values = torch.einsum("bpj,bj->bp", tmp, branch2_out)
+        values = values + self.bias
         return values.view(batch_size, self.n_t, self.n_x) if full_grid else values
 
 
