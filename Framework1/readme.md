@@ -1,6 +1,5 @@
-# 
+# Operator-valued Learning
 
-We compare Framework 1 $G:W\to\{ G_W: U\to V\}$, and Framework 2 $G:W\times U\to V$ here. We only consider the generation of parametric function. 
 
 ## Data Description
 
