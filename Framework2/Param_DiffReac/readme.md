@@ -1,1 +1,0 @@
-# Parametric Diffusion Reaction
