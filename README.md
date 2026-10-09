@@ -6,6 +6,25 @@ This repository contains the code and datasets used to run kernel multiple-opera
 2. cache model predictions and uncertainty estimates,
 3. summarize the cached results into CSV tables.
 
+## Preprint
+
+A detailed description of the model, methodology, and numerical results
+is available in the following preprint:
+
+- **Title:** Kernel Methods for Learning Operators with Multiple Inputs and Outputs
+- **Authors:** A. Weihs, C. Liao, J. Suń, H. Schaeffer.
+- **Link:** https://arxiv.org/abs/2608.11831
+
+#### Citation
+```bibtex
+@article{weihs2026kernel,
+title={Kernel Methods for Learning Operators with Multiple Inputs and Outputs},
+author={Weihs, Adrien and Liao, Chunyang and Sun, Jingmin and Schaeffer, Hayden},
+journal={arXiv preprint arXiv:2608.11831},
+year={2026}
+}
+```
+
 ## Repository Structure
 
 The main reusable files are:
